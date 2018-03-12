@@ -4,6 +4,8 @@
   "description": "A Vue.js project",
   "author": "Tommydreamer57 <minilao94@yahoo.com>",
   "private": true,
+  "main": "server/index.js",
+  "proxy": "http://localhost:8070",
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
     "start": "npm run dev",
@@ -13,6 +15,9 @@
     "build": "node build/build.js"
   },
   "dependencies": {
+    "body-parser": "^1.18.2",
+    "express": "^4.16.2",
+    "mongodb": "^3.0.4",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1"
   },

@@ -7,6 +7,12 @@ const passport = require('passport');
 const Auth0Strategy = require('passport-auth0');
 require('dotenv').config();
 
+// CONTROLLERS
+
+const ic = require('./controllers/individuals');
+const oc = require('./controllers/organisations');
+const mc = require('./controllers/memberships');
+
 // APP
 
 const app = express();
@@ -32,29 +38,17 @@ app.use(bodyParser.json());
 
 // MONGODB CONNECTION
 
-// DATABASE
+// COLLECTION
+const COLL = 'resume-review-individuals';
 let db;
-// COLLECTIONS
-const coll = {
-    organisations: 'resume-organisations',
-    users: 'resume-users',
-    memberships: 'resume-memberships',
-    resumes: 'resume-resumes',
-    comments: 'resume-comments'
-};
+
 // CONNECTION
 MongoClient.connect(URI, function (err, client) {
     assert.equal(null, err);
-    console.log(`${DBNAME} connected to server`);
-
     db = client.db(DBNAME);
-    // console.log("DB: ");
-    // console.log(db);
-    // console.log("CLIENT: ");
-    // console.log(client);
-
+    app.set('db', db);
+    console.log(`${DBNAME} connected to server`);
     app.listen(PORT, () => console.log(`Resume Review listening on port ${PORT}`));
-    // client.close();
 });
 
 // SESSION
@@ -63,9 +57,9 @@ app.use(session({
     secret: SECRET,
     resave: false,
     saveUninitialized: true
-}))
+}));
 
-// AUTH0 CONNECTION
+// AUTH0
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -76,17 +70,18 @@ passport.use(new Auth0Strategy({
     clientSecret: AUTH_CLIENT_SECRET,
     callbackURL: CALLBACK_URL
 }, function (accessToken, refreshToken, extraParams, profile, done) {
-    db.collection(coll.users).find({ id: profile.id }).toArray((err, results) => {
+    db.collection(COLL).find({ id: profile.id }).toArray((err, results) => {
         console.log(results);
         if (!results.length) {
-            console.log("ADDING")
-            db.collection(coll.users).save(profile).then(console.log)
+            console.log("ADDING");
+            db.collection(COLL).save(profile).then(() => {
+                return done(null, profile.id);
+            });
         }
         else {
-            console.log("FOUND")
+            console.log("FOUND");
             return done(null, profile.id);
         }
-        // console.log(profile);
     });
 }));
 
@@ -98,43 +93,38 @@ app.get('/auth/callback', passport.authenticate('auth0', {
     failureRedirect: FAILURE_REDIRECT
 }));
 
+app.get('/auth/me', (req, res) => {
+    if (req.user) res.status(200).send(req.user);
+    else res.status(401).json('please log in');
+});
+
 passport.serializeUser(function (id, done) {
     return done(null, id);
 });
 passport.deserializeUser(function (id, done) {
-    return done(null, id)
-})
+    db.collection(COLL).find({ id }).toArray((err, results) => {
+        return done(null, results[0]);
+    });
+});
 
 // MY ENDPOINTS HERE
 
-app.post('/individual', (req, res) => {
-    db.collection(coll.users).save(req.body, (err, result) => {
-        if (err) {
-            console.log(err);
-            res.status(500).json(`failure adding ${req.body.name} to db`);
-        }
-        else {
-            console.log(`saved ${req.body.name} to db`);
-            res.status(200).send(req.body);
-        }
-    });
-});
-app.get('/individual', (req, res) => {
-    db.collection(coll.users).find().toArray((err, results) => {
-        console.log(err);
-        console.log(results);
-        if (err) {
-            console.log(err);
-            res.status(500).json(`failure finding ${req.body.name}`);
-        }
-        else {
-            console.log(results);
-            res.status(200).send(results);
-        }
-    });
-});
-app.get('/individual/:name', (req, res) => {
-    db.collection(coll.users).find({ name: req.params.name }).toArray((err, user) => {
-        res.status(200).send(user)
-    });
-});
+// INDIVIDUALS
+app.get('/api/individuals', ic.getAll);
+app.get('/api/individuals/:id', ic.getOne);
+app.put('/api/individuals', ic.updateOne);
+app.delete('/api/individuals', ic.deleteAll);
+app.delete('/api/individuals/:id', ic.deleteOne);
+// ORGANISATIONS
+app.get('/api/organisations', oc.getAll);
+app.get('/api/organisations/:id', oc.getOne);
+app.post('/api/organisations', oc.addOne);
+app.put('/api/organisations', oc.updateOne);
+app.delete('/api/organisations', oc.deleteAll);
+app.delete('/api/organisations/:id', oc.deleteOne);
+// MEMBERSHIP
+app.get('/api/memberships', mc.getAll);
+app.get('/api/memberships/:iid/:oid', mc.getOne);
+app.post('/api/memberships', mc.addOne);
+app.delete('/api/memberships/', mc.deleteAll);
+app.delete('/api/memberships/:id', mc.deleteOne);

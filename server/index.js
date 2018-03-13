@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const MongoClient = require('mongodb').MongoClient;
@@ -17,6 +18,13 @@ const mc = require('./controllers/memberships');
 
 const app = express();
 
+// TOP LEVEL MIDDLEWARE
+
+app.use(bodyParser.json());
+app.use(cors());
+app.use(express.static(`${__dirname}/../dist`));
+app.use(express.static(`${__dirname}/../dist/index.html`));
+
 // CONSTANTS
 
 const PORT = 8070;
@@ -31,10 +39,6 @@ const {
     SUCCESS_REDIRECT,
     FAILURE_REDIRECT
 } = process.env;
-
-// TOP LEVEL MIDDLEWARE
-
-app.use(bodyParser.json());
 
 // MONGODB CONNECTION
 
@@ -71,7 +75,7 @@ passport.use(new Auth0Strategy({
     callbackURL: CALLBACK_URL
 }, function (accessToken, refreshToken, extraParams, profile, done) {
     db.collection(COLL).find({ id: profile.id }).toArray((err, results) => {
-        console.log(results);
+        // console.log(results);
         if (!results.length) {
             console.log("ADDING");
             db.collection(COLL).save(profile).then(() => {
@@ -79,7 +83,7 @@ passport.use(new Auth0Strategy({
             });
         }
         else {
-            console.log("FOUND");
+            console.log(`FOUND USER ${profile.id}`);
             return done(null, profile.id);
         }
     });
@@ -94,15 +98,33 @@ app.get('/auth/callback', passport.authenticate('auth0', {
 }));
 
 app.get('/auth/me', (req, res) => {
-    if (req.user) res.status(200).send(req.user);
-    else res.status(401).json('please log in');
+    if (!req.user) {
+        // send default user for now
+        let id = 'google-oauth2|100221677757660654495';
+        db.collection(COLL).find({ id }).toArray((err, results) => {
+            console.log(`added user ${results[0].id} to req`)
+            res.status(200).send(results[0]);
+        });
+    }
+    // if (req.user) {
+    else {
+        console.log(`found user ${req.user.id}`);
+        res.status(200).send(req.user);
+    }
+    // else {
+        // console.log(`could not find ${req.user}`);
+        // res.status(401).json('please log in');
+    // }
 });
 
 passport.serializeUser(function (id, done) {
+    console.log(`serialized user ${id}`);
     return done(null, id);
 });
 passport.deserializeUser(function (id, done) {
+    console.log(`deserialized user ${id}`);
     db.collection(COLL).find({ id }).toArray((err, results) => {
+        console.log(`found deserialized user ${results[0].id}`)
         return done(null, results[0]);
     });
 });
@@ -112,14 +134,14 @@ passport.deserializeUser(function (id, done) {
 // INDIVIDUALS
 app.get('/api/individuals', ic.getAll);
 app.get('/api/individuals/:id', ic.getOne);
-app.put('/api/individuals', ic.updateOne);
+app.put('/api/individuals/:id', ic.updateOne);
 app.delete('/api/individuals', ic.deleteAll);
 app.delete('/api/individuals/:id', ic.deleteOne);
 // ORGANISATIONS
 app.get('/api/organisations', oc.getAll);
 app.get('/api/organisations/:id', oc.getOne);
 app.post('/api/organisations', oc.addOne);
-app.put('/api/organisations', oc.updateOne);
+app.put('/api/organisations/:id', oc.updateOne);
 app.delete('/api/organisations', oc.deleteAll);
 app.delete('/api/organisations/:id', oc.deleteOne);
 // MEMBERSHIP
@@ -128,3 +150,9 @@ app.get('/api/memberships/:iid/:oid', mc.getOne);
 app.post('/api/memberships', mc.addOne);
 app.delete('/api/memberships/', mc.deleteAll);
 app.delete('/api/memberships/:id', mc.deleteOne);
+
+// SEND FILES
+// const path = require('path');
+// app.get('*', (req, res) => {
+//     res.sendFile(path.join(`${__dirname}/../dist/index.html`));
+// });

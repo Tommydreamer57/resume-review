@@ -14,9 +14,9 @@ export default new Router({
       component: Dashboard
     },
     {
-      path: '/organisation/:id',
+      path: '/organisation',
       name: 'Organisation',
-      component: Organisation   
+      component: Organisation
     }
   ]
 })

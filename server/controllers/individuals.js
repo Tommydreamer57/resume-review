@@ -15,7 +15,13 @@ module.exports = {
         });
     },
     updateOne(req, res) {
-
+        const db = req.app.get('db');
+        delete req.body._id
+        delete req.body._json
+        delete req.body.provider
+        db.collection(COLL).update({ _id: req.params.id }, { $set: req.body }).then(() => {
+            res.status(200).json(`updated user ${req.params.id}`);
+        });
     },
     deleteAll(req, res) {
         const db = req.app.get('db');

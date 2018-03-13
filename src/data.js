@@ -8,9 +8,9 @@ const organisation = {
 
 const individual = {
     id: -1,
-    name: "Tommy",
-    email: "mini@lao.com",
-    img: "tommy image",
+    displayName: "Tommy",
+    emails: ["mini@lao.com"],
+    picture: "tommy image",
     memberships: [-1],
     resume: {
         pdf: "anjbeiwgjosdvmkdjnfh",

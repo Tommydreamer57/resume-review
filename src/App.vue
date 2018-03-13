@@ -4,11 +4,13 @@
     <div id="content">
       <img src="./assets/logo.png">
       <router-view/>
+      <a href="http://localhost:8070/auth"><h1>LOGIN</h1></a>
     </div>
   </div>
 </template>
 
 <script>
+import axios from "axios";
 import Details from "@/components/reusable/Details";
 export default {
   name: "App",
@@ -16,11 +18,14 @@ export default {
     Details
   }
 };
+axios.get("http://localhost:8070/auth/me").then(res => {
+  console.log(res.data);
+});
 </script>
 
 <style>
-@import 'reset.css';
-@import 'theme.css';
+@import "reset.css";
+@import "theme.css";
 #app {
   font-family: "Avenir", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
